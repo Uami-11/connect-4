@@ -22,6 +22,10 @@ var Current = &State{}
 // Cleared by the result scene when the match is over.
 var CurrentWS *net.WSConn
 
+// CurrentOtherUsername holds the username to view in ProfileOther.
+// Set before navigating to IDProfileOther.
+var CurrentOtherUsername string
+
 // Clear resets the session (sign-out).
 func (s *State) Clear() {
 	s.Token = ""

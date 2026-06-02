@@ -8,6 +8,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"connect4/client/scene"
+	"connect4/client/session"
 )
 
 const (
@@ -56,7 +57,7 @@ func buildManager() *scene.Manager {
 		scene.IDGame:         func() scene.Scene { return scene.NewGame(mgr) },
 		scene.IDResult:       func() scene.Scene { return scene.NewResult(mgr, "", "", 0, 0, 0) },
 		scene.IDProfile:      func() scene.Scene { return scene.NewProfile(mgr) },
-		scene.IDProfileOther: func() scene.Scene { return scene.NewProfileOther(mgr, "") },
+		scene.IDProfileOther: func() scene.Scene { return scene.NewProfileOther(mgr, session.CurrentOtherUsername) },
 		scene.IDLeaderboard:  func() scene.Scene { return scene.NewLeaderboard(mgr) },
 	}
 

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -53,6 +54,9 @@ func (h *WS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		conn.Close()
 		return
 	}
+
+	// Mark player as active.
+	h.mm.UpdateLastActive(context.Background(), claims.UserID)
 
 	// Check if this is a reconnect attempt.
 	if existing := h.mm.FindMatch(authMsg.Token); existing != nil {

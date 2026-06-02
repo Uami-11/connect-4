@@ -1,6 +1,7 @@
 package game
 
 import (
+	"context"
 	"sync"
 
 	"connect4/server/internal/db"
@@ -74,6 +75,11 @@ func (mm *Matchmaker) Remove(id string) {
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 	delete(mm.matches, id)
+}
+
+// UpdateLastActive sets the player's last_active timestamp to now.
+func (mm *Matchmaker) UpdateLastActive(ctx context.Context, userID int) {
+	mm.queries.UpdateLastActive(ctx, userID)
 }
 
 // matchID generates a stable key from two clients.
