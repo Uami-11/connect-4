@@ -231,7 +231,7 @@ func (s *Login) submit() {
 }
 
 func (s *Login) toggleBounds() [4]int {
-	btnY := s.btnY + s.btnH + 8
+	btnY := s.btnY + s.btnH + 108
 	txt := "register instead?"
 	if s.mode == modeRegister {
 		txt = "login instead?"
@@ -276,7 +276,7 @@ func (s *Login) Draw(screen *ebiten.Image) {
 		toggleTxt = "login instead?"
 	}
 	b := text.BoundString(basicfont.Face7x13, toggleTxt)
-	toggleY := s.btnY + s.btnH + 8
+	toggleY := s.btnY + s.btnH + 108
 	tx = s.boxX + (s.boxW-b.Dx())/2
 	text.Draw(screen, toggleTxt, basicfont.Face7x13, tx, toggleY, powderBlush)
 
