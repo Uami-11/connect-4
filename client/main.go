@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	screenW = 480
-	screenH = 320
+	screenW = 1024
+	screenH = 768
 )
 
 // game is the top-level Ebitengine game struct.

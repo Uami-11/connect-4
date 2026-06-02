@@ -7,6 +7,7 @@ import (
 
 	"connect4/server/internal/auth"
 	"connect4/server/internal/db"
+	"connect4/server/internal/model"
 )
 
 // Auth handles POST /register and POST /login.
@@ -124,7 +125,7 @@ func (l *Leaderboard) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if entries == nil {
-		entries = []any{} // send [] not null
+		entries = []model.LeaderboardEntry{} // send [] not null
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(entries)
