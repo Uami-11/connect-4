@@ -100,7 +100,7 @@ func (q *Queries) CreateMatch(ctx context.Context, m *model.Match) error {
 func (q *Queries) GetLeaderboard(ctx context.Context) ([]model.LeaderboardEntry, error) {
 	rows, err := q.pool.Query(ctx, `
 		SELECT
-			ROW_NUMBER() OVER (ORDER BY u.elo DESC) AS rank,
+			DENSE_RANK() OVER (ORDER BY u.elo DESC) AS rank,
 			u.username,
 			u.elo,
 			COUNT(CASE WHEN m.winner_id = u.id THEN 1 END)                             AS wins,
@@ -112,7 +112,7 @@ func (q *Queries) GetLeaderboard(ctx context.Context) ([]model.LeaderboardEntry,
 		FROM users u
 		LEFT JOIN matches m ON m.player1_id = u.id OR m.player2_id = u.id
 		GROUP BY u.id, u.username, u.elo
-		ORDER BY u.elo DESC
+		ORDER BY u.elo DESC, u.username ASC
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("querying leaderboard: %w", err)
