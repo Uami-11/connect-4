@@ -68,7 +68,7 @@ func (a *Auth) Register(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{
 		"token":    token,
 		"username": body.Username,
-		"elo":      1000,
+		"elo":      600,
 	})
 }
 
@@ -92,6 +92,9 @@ func (a *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid username or password", http.StatusUnauthorized)
 		return
 	}
+
+	// Update last_active on login.
+	_ = a.queries.UpdateLastActive(r.Context(), user.ID)
 
 	token, err := auth.GenerateToken(user.ID, user.Username, a.jwtSecret)
 	if err != nil {

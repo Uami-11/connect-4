@@ -1,0 +1,7 @@
+-- +goose Up
+ALTER TABLE users ADD COLUMN last_active TIMESTAMPTZ;
+ALTER TABLE users ALTER COLUMN elo SET DEFAULT 600;
+
+-- +goose Down
+ALTER TABLE users DROP COLUMN last_active;
+ALTER TABLE users ALTER COLUMN elo SET DEFAULT 1000;

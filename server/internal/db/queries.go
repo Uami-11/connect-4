@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -26,7 +27,7 @@ func (q *Queries) CreateUser(ctx context.Context, username, passwordHash string)
 	var id int
 	err := q.pool.QueryRow(ctx,
 		`INSERT INTO users (username, password_hash, elo)
-		 VALUES ($1, $2, 1000)
+		 VALUES ($1, $2, 600)
 		 RETURNING id`,
 		username, passwordHash,
 	).Scan(&id)
@@ -40,10 +41,10 @@ func (q *Queries) CreateUser(ctx context.Context, username, passwordHash string)
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
 	u := &model.User{}
 	err := q.pool.QueryRow(ctx,
-		`SELECT id, username, password_hash, elo, created_at
+		`SELECT id, username, password_hash, elo, created_at, last_active
 		 FROM users WHERE username = $1`,
 		username,
-	).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.ELO, &u.CreatedAt)
+	).Scan(&u.ID, &u.Username, &u.PasswordHash, &u.ELO, &u.CreatedAt, &u.LastActiveAt)
 	if err != nil {
 		return nil, fmt.Errorf("getting user %q: %w", username, err)
 	}
@@ -58,6 +59,18 @@ func (q *Queries) UpdateELO(ctx context.Context, userID, newELO int) error {
 	)
 	if err != nil {
 		return fmt.Errorf("updating elo for user %d: %w", userID, err)
+	}
+	return nil
+}
+
+// UpdateLastActive sets a player's last_active timestamp to now.
+func (q *Queries) UpdateLastActive(ctx context.Context, userID int) error {
+	_, err := q.pool.Exec(ctx,
+		`UPDATE users SET last_active = NOW() WHERE id = $1`,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("updating last_active for user %d: %w", userID, err)
 	}
 	return nil
 }
@@ -127,8 +140,16 @@ func (q *Queries) GetPublicProfile(ctx context.Context, username string) (*model
 		return nil, err
 	}
 
-	// Aggregate win/loss/draw counts.
-	p := &model.PublicProfile{Username: u.Username, ELO: u.ELO}
+	// Aggregate win/loss/draw counts and profile metadata.
+	p := &model.PublicProfile{
+		Username:     u.Username,
+		ELO:          u.ELO,
+		CreatedAt:    u.CreatedAt,
+		LastActiveAt: u.LastActiveAt,
+	}
+	if u.LastActiveAt != nil && time.Since(*u.LastActiveAt).Seconds() < 60 {
+		p.Online = true
+	}
 	err = q.pool.QueryRow(ctx, `
 		SELECT
 			COUNT(CASE WHEN winner_id = $1 THEN 1 END)                                AS wins,

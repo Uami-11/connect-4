@@ -3,20 +3,20 @@
 package net
 
 import (
-	"fmt"
 	"strings"
 	"syscall/js"
 )
 
 // WSConn is a thin wrapper around the browser WebSocket API.
 type WSConn struct {
-	ws    js.Value
-	recv  chan string
-	done  chan struct{}
+	ws   js.Value
+	recv chan string
+	done chan struct{}
 }
 
 // NewWSConn opens a WebSocket connection to /ws on the current origin.
-// Returns once the connection is open or returns an error if it fails.
+// Returns immediately without waiting for the connection to open.
+// Call IsOpen() to poll the connection state.
 func NewWSConn() (*WSConn, error) {
 	origin := js.Global().Get("location").Get("origin").String()
 	wsURL := strings.Replace(origin, "http", "ws", 1) + "/ws"
@@ -26,25 +26,14 @@ func NewWSConn() (*WSConn, error) {
 		done: make(chan struct{}),
 	}
 
-	opened := make(chan error, 1)
-
 	ws := js.Global().Get("WebSocket").New(wsURL)
 	c.ws = ws
 
-	ws.Set("onopen", js.FuncOf(func(_ js.Value, _ []js.Value) any {
-		opened <- nil
-		return nil
-	}))
-	ws.Set("onerror", js.FuncOf(func(_ js.Value, args []js.Value) any {
-		opened <- fmt.Errorf("websocket error")
-		return nil
-	}))
 	ws.Set("onmessage", js.FuncOf(func(_ js.Value, args []js.Value) any {
 		data := args[0].Get("data").String()
 		select {
 		case c.recv <- data:
 		default:
-			// Drop if buffer full — should not happen in normal play.
 		}
 		return nil
 	}))
@@ -57,10 +46,12 @@ func NewWSConn() (*WSConn, error) {
 		return nil
 	}))
 
-	if err := <-opened; err != nil {
-		return nil, err
-	}
 	return c, nil
+}
+
+// IsOpen returns true when the WebSocket connection is open and ready.
+func (c *WSConn) IsOpen() bool {
+	return c.ws.Get("readyState").Int() == 1 // WebSocket.OPEN
 }
 
 // Send sends a raw JSON string over the WebSocket.

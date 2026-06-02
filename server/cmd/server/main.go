@@ -11,7 +11,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
-	"connect4/server/internal/auth"
 	"connect4/server/internal/db"
 	"connect4/server/internal/game"
 	"connect4/server/internal/handler"
@@ -67,7 +66,7 @@ func main() {
 	mux.HandleFunc("POST /login", authHandler.Login)
 	mux.HandleFunc("GET /leaderboard", leaderboardHandler.Get)
 	mux.HandleFunc("GET /profile/{username}", profileHandler.Get)
-	mux.Handle("/ws", auth.Middleware(jwtSecret, wsHandler.ServeHTTP))
+	mux.Handle("/ws", http.HandlerFunc(wsHandler.ServeHTTP))
 
 	// Serve WASM client static files.
 	mux.Handle("/", http.FileServer(http.Dir("./static")))

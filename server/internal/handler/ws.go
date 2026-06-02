@@ -103,23 +103,38 @@ func (h *WS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// waitInQueue blocks reading messages while the client waits for an opponent.
-// The only valid message here is "cancel".
+// waitInQueue reads messages while the client waits for an opponent.
+// It handles "cancel" to leave the queue, and after a match is created it
+// forwards game messages (place, disconnect) to the match.
 func waitInQueue(conn *websocket.Conn, c *game.Client, mm *game.Matchmaker) {
 	defer func() {
 		mm.Dequeue(c)
+		// If a match exists, notify it of the disconnect.
+		if m := mm.FindMatch(c.Token); m != nil {
+			m.HandleDisconnect(c)
+		}
 		conn.Close()
 		close(c.Send)
 	}()
 	for {
-		var msg model.WSMessage
-		if err := conn.ReadJSON(&msg); err != nil {
+		_, raw, err := conn.ReadMessage()
+		if err != nil {
 			return
 		}
-		if msg.Type == "cancel" {
+		var msg model.WSMessage
+		if err := json.Unmarshal(raw, &msg); err != nil {
+			continue
+		}
+		switch msg.Type {
+		case "cancel":
 			mm.Dequeue(c)
 			conn.WriteJSON(model.WSMessage{Type: "cancelled"})
 			return
+		case "place":
+			// Match may have been created while we were waiting.
+			if m := mm.FindMatch(c.Token); m != nil {
+				m.HandleMessage(c, raw)
+			}
 		}
 	}
 }

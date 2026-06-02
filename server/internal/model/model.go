@@ -9,6 +9,7 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	ELO          int       `json:"elo"`
 	CreatedAt    time.Time `json:"created_at"`
+	LastActiveAt *time.Time `json:"last_active_at"`
 }
 
 // Match is a completed game stored in the database.
@@ -46,12 +47,15 @@ type LeaderboardEntry struct {
 
 // PublicProfile is a player's profile visible to any user.
 type PublicProfile struct {
-	Username string              `json:"username"`
-	ELO      int                 `json:"elo"`
-	Wins     int                 `json:"wins"`
-	Losses   int                 `json:"losses"`
-	Draws    int                 `json:"draws"`
-	History  []MatchHistoryEntry `json:"history"`
+	Username     string              `json:"username"`
+	ELO          int                 `json:"elo"`
+	Wins         int                 `json:"wins"`
+	Losses       int                 `json:"losses"`
+	Draws        int                 `json:"draws"`
+	CreatedAt    time.Time           `json:"created_at"`
+	LastActiveAt *time.Time          `json:"last_active_at"`
+	Online       bool                `json:"online"`
+	History      []MatchHistoryEntry `json:"history"`
 }
 
 // WSMessage is the envelope for every WebSocket message.
