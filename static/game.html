@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { margin: 0; background: #0a0a1a; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="wasm_exec.js"></script>
+  <script>
+    const go = new Go();
+    WebAssembly.instantiateStreaming(fetch("game.wasm"), go.importObject)
+      .then(result => go.run(result.instance))
+      .catch(err => {
+        document.body.style.color = "#fff";
+        document.body.style.padding = "20px";
+        document.body.innerText = "Failed to load game: " + err;
+      });
+  </script>
+</body>
+</html>
