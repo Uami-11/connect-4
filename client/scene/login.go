@@ -3,6 +3,10 @@
 package scene
 
 import (
+	"connect4/client/assets"
+	"connect4/client/net"
+	"connect4/client/session"
+	"connect4/client/ui"
 	"image/color"
 	"strings"
 
@@ -10,11 +14,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text"
 	"golang.org/x/image/font/basicfont"
-
-	"connect4/client/assets"
-	"connect4/client/net"
-	"connect4/client/session"
-	"connect4/client/ui"
 )
 
 var (
@@ -40,7 +39,9 @@ type Login struct {
 	errMsg         string
 	loading        bool
 
-	btnW, btnH int
+	boxX, boxY, boxW, boxH int
+	startY, rowGap         int
+	btnW, btnH, btnX, btnY int
 
 	pendingReq *net.PendingRequest
 }
@@ -63,25 +64,32 @@ func NewLogin(mgr *Manager) *Login {
 	inX := boxX + (boxW-inW)/2
 	rowGap := 48
 	startY := boxY + 60
+	btnX := boxX + (boxW-btnW)/2
+	btnY := startY + rowGap*2 + 30
 
 	s := &Login{
-		mgr: mgr,
-		bg:  assets.MustLoadImage("images/backgrounds/login.png"),
-		mode: modeLogin,
+		mgr:           mgr,
+		bg:            assets.MustLoadImage("images/backgrounds/login.png"),
+		mode:          modeLogin,
 		usernameInput: ui.NewInput(inX, startY, inW, inH, "username"),
 		passwordInput: ui.NewInput(inX, startY+rowGap, inW, inH, "password"),
 		confirmInput:  ui.NewInput(inX, startY+rowGap*2, inW, inH, "confirm password"),
+		boxX:          boxX,
+		boxY:          boxY,
+		boxW:          boxW,
+		boxH:          boxH,
+		startY:        startY,
+		rowGap:        rowGap,
 		btnW:          btnW,
 		btnH:          btnH,
+		btnX:          btnX,
+		btnY:          btnY,
 	}
 	s.usernameInput.TextColor = deepWalnut
 	s.passwordInput.TextColor = deepWalnut
 	s.passwordInput.Secret = true
 	s.confirmInput.TextColor = deepWalnut
 	s.confirmInput.Secret = true
-
-	btnX := boxX + (boxW-btnW)/2
-	btnY := startY + rowGap*2 + 30
 
 	s.loginBtn = ui.NewButton(btnX, btnY, btnW, btnH, "Log In", func() {
 		s.submit()
@@ -223,31 +231,24 @@ func (s *Login) submit() {
 }
 
 func (s *Login) toggleBounds() [4]int {
-	boxW := 400
-	boxX := (1024 - boxW) / 2
-	boxY := (768 - 380) / 2
-	btnY := boxY + 60 + 48*2 + 30 + 44 + 8
+	btnY := s.btnY + s.btnH + 8
 	txt := "register instead?"
 	if s.mode == modeRegister {
 		txt = "login instead?"
 	}
 	b := text.BoundString(basicfont.Face7x13, txt)
-	tx := boxX + (boxW-b.Dx())/2
+	tx := s.boxX + (s.boxW-b.Dx())/2
 	return [4]int{tx, btnY, tx + b.Dx(), btnY + b.Dy()}
 }
 
 func (s *Login) Draw(screen *ebiten.Image) {
 	screen.DrawImage(s.bg, nil)
 
-	boxW, boxH := 400, 380
-	boxX := (1024 - boxW) / 2
-	boxY := (768 - boxH) / 2
-
 	// Semi-transparent overlay box
-	boxImg := ebiten.NewImage(boxW, boxH)
+	boxImg := ebiten.NewImage(s.boxW, s.boxH)
 	boxImg.Fill(color.RGBA{0x0a, 0x0a, 0x1a, 0xaa})
 	opts := &ebiten.DrawImageOptions{}
-	opts.GeoM.Translate(float64(boxX), float64(boxY))
+	opts.GeoM.Translate(float64(s.boxX), float64(s.boxY))
 	screen.DrawImage(boxImg, opts)
 
 	// Title
@@ -255,8 +256,8 @@ func (s *Login) Draw(screen *ebiten.Image) {
 	if s.mode == modeRegister {
 		title = "Register"
 	}
-	tx := boxX + (boxW-text.BoundString(basicfont.Face7x13, title).Dx())/2
-	text.Draw(screen, title, basicfont.Face7x13, tx, boxY+30, frostedMint)
+	tx := s.boxX + (s.boxW-text.BoundString(basicfont.Face7x13, title).Dx())/2
+	text.Draw(screen, title, basicfont.Face7x13, tx, s.boxY+30, frostedMint)
 
 	// Inputs
 	s.usernameInput.Draw(screen)
@@ -275,22 +276,22 @@ func (s *Login) Draw(screen *ebiten.Image) {
 		toggleTxt = "login instead?"
 	}
 	b := text.BoundString(basicfont.Face7x13, toggleTxt)
-	btnY := boxY + 60 + 48*2 + 30 + 44 + 8
-	tx = boxX + (boxW-b.Dx())/2
-	text.Draw(screen, toggleTxt, basicfont.Face7x13, tx, btnY, powderBlush)
+	toggleY := s.btnY + s.btnH + 8
+	tx = s.boxX + (s.boxW-b.Dx())/2
+	text.Draw(screen, toggleTxt, basicfont.Face7x13, tx, toggleY, powderBlush)
 
 	// Error message
 	if s.errMsg != "" {
 		eb := text.BoundString(basicfont.Face7x13, s.errMsg)
-		ex := boxX + (boxW-eb.Dx())/2
-		text.Draw(screen, s.errMsg, basicfont.Face7x13, ex, boxY+boxH-20, color.RGBA{0xff, 0x60, 0x60, 0xff})
+		ex := s.boxX + (s.boxW-eb.Dx())/2
+		text.Draw(screen, s.errMsg, basicfont.Face7x13, ex, s.boxY+s.boxH-20, color.RGBA{0xff, 0x60, 0x60, 0xff})
 	}
 
 	// Loading
 	if s.loading {
 		lt := "loading..."
 		lb := text.BoundString(basicfont.Face7x13, lt)
-		lx := boxX + (boxW-lb.Dx())/2
-		text.Draw(screen, lt, basicfont.Face7x13, lx, boxY+boxH-40, lightGray)
+		lx := s.boxX + (s.boxW-lb.Dx())/2
+		text.Draw(screen, lt, basicfont.Face7x13, lx, s.boxY+s.boxH-40, lightGray)
 	}
 }
