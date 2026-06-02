@@ -65,7 +65,7 @@ func NewLogin(mgr *Manager) *Login {
 	rowGap := 48
 	startY := boxY + 60
 	btnX := boxX + (boxW-btnW)/2
-	btnY := startY + rowGap*2 + 30
+	btnY := startY + rowGap*2 + 80
 
 	s := &Login{
 		mgr:           mgr,
@@ -231,14 +231,14 @@ func (s *Login) submit() {
 }
 
 func (s *Login) toggleBounds() [4]int {
-	btnY := s.btnY + s.btnH + 108
+	btnY := s.btnY + s.btnH + 58
 	txt := "register instead?"
 	if s.mode == modeRegister {
 		txt = "login instead?"
 	}
 	b := text.BoundString(basicfont.Face7x13, txt)
 	tx := s.boxX + (s.boxW-b.Dx())/2
-	return [4]int{tx, btnY, tx + b.Dx(), btnY + b.Dy()}
+	return [4]int{tx, btnY + b.Min.Y, tx + b.Dx(), btnY + b.Max.Y}
 }
 
 func (s *Login) Draw(screen *ebiten.Image) {
@@ -276,7 +276,7 @@ func (s *Login) Draw(screen *ebiten.Image) {
 		toggleTxt = "login instead?"
 	}
 	b := text.BoundString(basicfont.Face7x13, toggleTxt)
-	toggleY := s.btnY + s.btnH + 108
+	toggleY := s.btnY + s.btnH + 58
 	tx = s.boxX + (s.boxW-b.Dx())/2
 	text.Draw(screen, toggleTxt, basicfont.Face7x13, tx, toggleY, powderBlush)
 
