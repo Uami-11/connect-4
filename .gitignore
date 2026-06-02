@@ -31,3 +31,8 @@ go.work.sum
 # .idea/
 # .vscode/
 AGENTS.md
+
+server-bin
+static/game.wasm
+static/wasm_exec.js
+
