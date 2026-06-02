@@ -41,6 +41,8 @@ type Login struct {
 	loading        bool
 
 	btnW, btnH int
+
+	pendingReq *net.PendingRequest
 }
 
 type loginMode int
@@ -100,6 +102,30 @@ func NewLogin(mgr *Manager) *Login {
 }
 
 func (s *Login) Update() error {
+	if s.pendingReq != nil {
+		net.Poll(s.pendingReq)
+		if s.pendingReq.Done {
+			pr := s.pendingReq
+			s.pendingReq = nil
+			var resp struct {
+				Token    string `json:"token"`
+				Username string `json:"username"`
+				ELO      int    `json:"elo"`
+			}
+			if err := net.DecodeResult(pr, &resp); err != nil {
+				s.errMsg = err.Error()
+				s.loading = false
+			} else {
+				session.Current.Token = resp.Token
+				session.Current.Username = resp.Username
+				session.Current.ELO = resp.ELO
+				session.Current.LoggedIn = true
+				s.loading = false
+				s.mgr.Navigate(IDMenu)
+			}
+		}
+	}
+
 	s.usernameInput.Update()
 	s.passwordInput.Update()
 	s.confirmInput.Update()
@@ -118,9 +144,6 @@ func (s *Login) Update() error {
 
 	// Enter submits
 	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
-		if s.mode == modeRegister {
-			s.confirmInput.Focus()
-		}
 		s.submit()
 	}
 
@@ -190,38 +213,13 @@ func (s *Login) submit() {
 	}
 
 	s.loading = true
-	go func() {
-		var resp struct {
-			Token    string `json:"token"`
-			Username string `json:"username"`
-			ELO      int    `json:"elo"`
-		}
-		var err error
-		if s.mode == modeLogin {
-			err = net.Post("/login", map[string]string{
-				"username": username,
-				"password": password,
-			}, &resp)
-		} else {
-			err = net.Post("/register", map[string]string{
-				"username": username,
-				"password": password,
-			}, &resp)
-		}
 
-		if err != nil {
-			s.errMsg = err.Error()
-			s.loading = false
-			return
-		}
-
-		session.Current.Token = resp.Token
-		session.Current.Username = resp.Username
-		session.Current.ELO = resp.ELO
-		session.Current.LoggedIn = true
-		s.loading = false
-		s.mgr.Navigate(IDMenu)
-	}()
+	body := map[string]string{"username": username, "password": password}
+	path := "/login"
+	if s.mode == modeRegister {
+		path = "/register"
+	}
+	s.pendingReq = net.StartPost(path, body)
 }
 
 func (s *Login) toggleBounds() [4]int {

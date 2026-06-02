@@ -33,16 +33,20 @@ type Manager struct {
 	next    *ID // set by a scene to request a transition
 }
 
-// NewManager creates a Manager starting on the Login scene.
-// factories maps each ID to a constructor; constructors are called
-// lazily so scenes are rebuilt on each visit.
+// NewManager creates a Manager with the given scene factories.
+// Start() must be called once before any Update/Draw calls.
 func NewManager(factories map[ID]func() Scene) *Manager {
-	m := &Manager{
+	return &Manager{
 		scenes: factories,
 		stack:  []ID{IDLogin},
 	}
-	m.current = factories[IDLogin]()
-	return m
+}
+
+// Start creates the initial Login scene. Call once after assigning the
+// Manager to its variable so closures in scene constructors see a non-nil
+// Manager pointer.
+func (m *Manager) Start() {
+	m.current = m.scenes[IDLogin]()
 }
 
 // Navigate pushes a new scene onto the stack.

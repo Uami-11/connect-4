@@ -61,5 +61,6 @@ func buildManager() *scene.Manager {
 	}
 
 	mgr = scene.NewManager(factories)
+	mgr.Start()
 	return mgr
 }
