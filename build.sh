@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# build.sh — local development build
-# Run from the project root (connect4/)
+# build.sh — Build WASM + server + Docker image + push to GHCR
+# Run from project root (connect-4/)
 set -e
 
 echo "==> Building WASM client..."
@@ -17,12 +17,20 @@ fi
 cp "$WASM_EXEC" static/wasm_exec.js
 echo "    → static/wasm_exec.js"
 
-echo "==> Building server..."
+echo "==> Building server binary..."
 cd server
 go build -o ../server-bin ./cmd/server
 cd ..
 echo "    → server-bin"
 
+echo "==> Building Docker image..."
+docker build -t ghcr.io/uami-11/connect-4:latest .
+echo "    → ghcr.io/uami-11/connect-4:latest"
+
+echo "==> Pushing to GHCR..."
+docker push ghcr.io/uami-11/connect-4:latest
+echo "    → pushed"
+
 echo ""
-echo "Done. Start with:"
-echo "  DATABASE_URL=postgres://... JWT_SECRET=... ./server-bin"
+echo "Done! On your server, run:"
+echo "  kubectl rollout restart deployment/connect4 -n connect4"

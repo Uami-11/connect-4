@@ -54,6 +54,7 @@ type Game struct {
 	opponentName string
 
 	hoverCol      int
+	keyboardCol   int
 	disconnectSec int
 
 	overlay *ebiten.Image
@@ -74,6 +75,7 @@ func NewGame(mgr *Manager) *Game {
 		opponentName: session.CurrentMatchOpponent,
 		myTurn:       session.CurrentMatchColor == 1,
 		hoverCol:     -1,
+		keyboardCol:  -1,
 		overlay:      ebiten.NewImage(1024, 768),
 	}
 	s.overlay.Fill(color.RGBA{0, 0, 0, 0x88})
@@ -98,9 +100,44 @@ func (s *Game) Update() error {
 
 	case phasePlaying:
 		mx, _ := ebiten.CursorPosition()
+
 		s.updateHoverCol(mx)
-		if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && s.myTurn && s.hoverCol >= 0 {
-			s.placeToken(s.hoverCol)
+		if s.hoverCol >= 0 {
+			s.keyboardCol = -1
+		}
+
+		if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
+			cur := s.hoverCol
+			if cur < 0 {
+				cur = 3
+			}
+			s.hoverCol = cur - 1
+			if s.hoverCol < 0 {
+				s.hoverCol = 6
+			}
+			s.keyboardCol = s.hoverCol
+		}
+		if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
+			cur := s.hoverCol
+			if cur < 0 {
+				cur = 3
+			}
+			s.hoverCol = cur + 1
+			if s.hoverCol > 6 {
+				s.hoverCol = 0
+			}
+			s.keyboardCol = s.hoverCol
+		}
+
+		if s.hoverCol < 0 && s.keyboardCol >= 0 {
+			s.hoverCol = s.keyboardCol
+		}
+
+		if s.myTurn && s.hoverCol >= 0 {
+			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) ||
+				inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+				s.placeToken(s.hoverCol)
+			}
 		}
 	}
 
