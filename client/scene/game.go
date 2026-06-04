@@ -53,9 +53,10 @@ type Game struct {
 	myTurn       bool
 	opponentName string
 
-	hoverCol      int
-	keyboardCol   int
-	disconnectSec int
+	hoverCol       int
+	keyboardActive bool
+	lastMouseCol   int
+	disconnectSec  int
 
 	overlay *ebiten.Image
 }
@@ -74,9 +75,9 @@ func NewGame(mgr *Manager) *Game {
 		myColor:      session.CurrentMatchColor,
 		opponentName: session.CurrentMatchOpponent,
 		myTurn:       session.CurrentMatchColor == 1,
-		hoverCol:     -1,
-		keyboardCol:  -1,
-		overlay:      ebiten.NewImage(1024, 768),
+		hoverCol:      -1,
+		lastMouseCol:  -1,
+		overlay:       ebiten.NewImage(1024, 768),
 	}
 	s.overlay.Fill(color.RGBA{0, 0, 0, 0x88})
 	return s
@@ -101,36 +102,42 @@ func (s *Game) Update() error {
 	case phasePlaying:
 		mx, _ := ebiten.CursorPosition()
 
-		s.updateHoverCol(mx)
-		if s.hoverCol >= 0 {
-			s.keyboardCol = -1
+		scaledLeft := boardScreenX + gridLeft*scale
+		scaledColW := float64(colStep) * scale
+		c := int((float64(mx) - scaledLeft) / scaledColW)
+		mouseCol := -1
+		if c >= 0 && c < 7 {
+			mouseCol = c
 		}
 
 		if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
-			cur := s.hoverCol
-			if cur < 0 {
-				cur = 3
-			}
-			s.hoverCol = cur - 1
-			if s.hoverCol < 0 {
+			if s.hoverCol <= 0 {
 				s.hoverCol = 6
+			} else {
+				s.hoverCol--
 			}
-			s.keyboardCol = s.hoverCol
+			s.keyboardActive = true
 		}
 		if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
-			cur := s.hoverCol
-			if cur < 0 {
-				cur = 3
-			}
-			s.hoverCol = cur + 1
-			if s.hoverCol > 6 {
+			if s.hoverCol >= 6 {
 				s.hoverCol = 0
+			} else {
+				s.hoverCol++
 			}
-			s.keyboardCol = s.hoverCol
+			s.keyboardActive = true
 		}
 
-		if s.hoverCol < 0 && s.keyboardCol >= 0 {
-			s.hoverCol = s.keyboardCol
+		if mouseCol >= 0 {
+			if mouseCol != s.lastMouseCol {
+				s.lastMouseCol = mouseCol
+				s.hoverCol = mouseCol
+				s.keyboardActive = false
+			}
+		} else {
+			s.lastMouseCol = -1
+			if !s.keyboardActive {
+				s.hoverCol = -1
+			}
 		}
 
 		if s.myTurn && s.hoverCol >= 0 {
@@ -142,17 +149,6 @@ func (s *Game) Update() error {
 	}
 
 	return nil
-}
-
-func (s *Game) updateHoverCol(mx int) {
-	scaledLeft := boardScreenX + gridLeft*scale
-	scaledColW := float64(colStep) * scale
-	col := int((float64(mx) - scaledLeft) / scaledColW)
-	if col >= 0 && col < 7 {
-		s.hoverCol = col
-	} else {
-		s.hoverCol = -1
-	}
 }
 
 func (s *Game) placeToken(col int) {

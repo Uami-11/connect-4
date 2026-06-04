@@ -36,4 +36,6 @@ server-bin
 static/game.wasm
 static/wasm_exec.js
 k8s/secrets.yaml
+localbuild.sh
+
 
