@@ -60,9 +60,11 @@ func (h *WS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Check if this is a reconnect attempt.
 	if existing := h.mm.FindMatch(authMsg.Token); existing != nil {
+		elo, _ := h.mm.GetELO(context.Background(), claims.UserID)
 		newClient := &game.Client{
 			UserID:   claims.UserID,
 			Username: claims.Username,
+			ELO:      elo,
 			Send:     make(chan []byte, 64),
 			Token:    authMsg.Token,
 		}
@@ -75,9 +77,11 @@ func (h *WS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// New connection — create client and enqueue.
+	elo, _ := h.mm.GetELO(context.Background(), claims.UserID)
 	client := &game.Client{
 		UserID:   claims.UserID,
 		Username: claims.Username,
+		ELO:      elo,
 		Send:     make(chan []byte, 64),
 		Token:    authMsg.Token,
 	}

@@ -51,6 +51,16 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (*mode
 	return u, nil
 }
 
+// GetELOByID returns the current ELO for a user.
+func (q *Queries) GetELOByID(ctx context.Context, userID int) (int, error) {
+	var elo int
+	err := q.pool.QueryRow(ctx, `SELECT elo FROM users WHERE id = $1`, userID).Scan(&elo)
+	if err != nil {
+		return 0, fmt.Errorf("getting elo for user %d: %w", userID, err)
+	}
+	return elo, nil
+}
+
 // UpdateELO sets a player's ELO to the new value.
 func (q *Queries) UpdateELO(ctx context.Context, userID, newELO int) error {
 	_, err := q.pool.Exec(ctx,

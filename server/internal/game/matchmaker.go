@@ -82,6 +82,11 @@ func (mm *Matchmaker) UpdateLastActive(ctx context.Context, userID int) {
 	mm.queries.UpdateLastActive(ctx, userID)
 }
 
+// GetELO returns the current ELO rating for a user.
+func (mm *Matchmaker) GetELO(ctx context.Context, userID int) (int, error) {
+	return mm.queries.GetELOByID(ctx, userID)
+}
+
 // matchID generates a stable key from two clients.
 func matchID(p1, p2 *Client) string {
 	return p1.Token + ":" + p2.Token

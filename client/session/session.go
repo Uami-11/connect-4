@@ -17,10 +17,29 @@ type State struct {
 // Current is the single session instance shared across all scenes.
 var Current = &State{}
 
+// CurrentMatchColor holds the player's color (1=red, 2=yellow) for the current match.
+var CurrentMatchColor int
+
+// CurrentMatchOpponent holds the opponent's username.
+var CurrentMatchOpponent string
+
 // CurrentWS holds the active WebSocket connection for the current match.
 // Set by the matchmaking scene after a "matched" message; read by the game scene.
 // Cleared by the result scene when the match is over.
 var CurrentWS *net.WSConn
+
+// GameResult carries end-of-match data from game scene to result scene.
+type GameResult struct {
+	Outcome   string
+	WinColor  string
+	ELOBefore int
+	ELOAfter  int
+	ELODelta  int
+}
+
+// CurrentResult is set by the game scene before navigating to IDResult.
+// Cleared when the result scene is done.
+var CurrentResult *GameResult
 
 // CurrentOtherUsername holds the username to view in ProfileOther.
 // Set before navigating to IDProfileOther.
