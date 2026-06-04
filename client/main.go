@@ -55,7 +55,10 @@ func buildManager() *scene.Manager {
 		scene.IDMenu:         func() scene.Scene { return scene.NewMenu(mgr) },
 		scene.IDMatchmaking:  func() scene.Scene { return scene.NewMatchmaking(mgr) },
 		scene.IDGame:         func() scene.Scene { return scene.NewGame(mgr) },
-		scene.IDResult:       func() scene.Scene { return scene.NewResult(mgr, "", "", 0, 0, 0) },
+		scene.IDResult: func() scene.Scene {
+			r := session.CurrentResult
+			return scene.NewResult(mgr, r.Outcome, r.WinColor, r.ELOBefore, r.ELOAfter, r.ELODelta)
+		},
 		scene.IDProfile:      func() scene.Scene { return scene.NewProfile(mgr) },
 		scene.IDProfileOther: func() scene.Scene { return scene.NewProfileOther(mgr, session.CurrentOtherUsername) },
 		scene.IDLeaderboard:  func() scene.Scene { return scene.NewLeaderboard(mgr) },

@@ -196,9 +196,14 @@ func (s *Matchmaking) handleMessage(raw string) {
 			s.errMsg = "invalid match data"
 			return
 		}
-		// Pass the WS connection to the game scene.
+		// Pass match data and WS connection to the game scene.
 		s.state = matchMatched
 		session.CurrentWS = s.ws
+		session.CurrentMatchColor = 1
+		session.CurrentMatchOpponent = payload.OpponentName
+		if payload.YourColor == "yellow" {
+			session.CurrentMatchColor = 2
+		}
 		s.ws = nil // prevent closing it on scene exit
 		s.mgr.Navigate(IDGame)
 
