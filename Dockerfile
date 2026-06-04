@@ -14,13 +14,13 @@ WORKDIR /build/server
 COPY server/go.mod server/go.sum ./
 RUN go mod download
 COPY server/ .
-RUN go build -o /build/server ./cmd/server
+	RUN go build -o /build/server-bin ./cmd/server
 
 # Stage 3: Minimal runtime image
 FROM alpine:3.19
 WORKDIR /app
 
-COPY --from=server-builder /build/server ./server
+COPY --from=server-builder /build/server-bin ./server
 COPY --from=wasm-builder   /build/game.wasm  ./static/game.wasm
 COPY --from=wasm-builder   /build/wasm_exec.js ./static/wasm_exec.js
 COPY static/ ./static/
