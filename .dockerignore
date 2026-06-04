@@ -1,0 +1,10 @@
+.git
+.gitignore
+AGENTS.md
+README.md
+LICENSE
+build.sh
+server-bin
+k8s/
+Dockerfile
+*.wasm
