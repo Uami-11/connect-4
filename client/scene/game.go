@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image/color"
+	"math"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -15,6 +16,7 @@ import (
 	"connect4/client/assets"
 	"connect4/client/net"
 	"connect4/client/session"
+	"connect4/client/ui"
 )
 
 const (
@@ -35,6 +37,7 @@ const (
 	phaseColorAssign gamePhase = iota
 	phasePlaying
 	phaseDisconnected
+	phaseResult
 )
 
 type Game struct {
@@ -59,6 +62,13 @@ type Game struct {
 	disconnectSec  int
 
 	overlay *ebiten.Image
+
+	result       session.GameResult
+	winCells     [][2]int
+	ticks        int
+	backBtn      *ui.Button
+	forfeitBtn   *ui.Button
+	forfeitSure  bool
 }
 
 func NewGame(mgr *Manager) *Game {
@@ -80,6 +90,35 @@ func NewGame(mgr *Manager) *Game {
 		overlay:       ebiten.NewImage(1024, 768),
 	}
 	s.overlay.Fill(color.RGBA{0, 0, 0, 0x88})
+
+	btnW, btnH := 220, 44
+	btnX := (1024 - btnW) / 2
+	s.backBtn = ui.NewButton(btnX, 600, btnW, btnH, "Back to Menu", func() {
+		session.CurrentWS = nil
+		session.CurrentMatchColor = 0
+		session.CurrentMatchOpponent = ""
+		session.CurrentResult = nil
+		mgr.Navigate(IDMenu)
+	})
+	s.backBtn.BgColor = deepWalnut
+	s.backBtn.HoverColor = darkCyan
+	s.backBtn.TextColor = white
+	s.backBtn.SetHidden(true)
+
+	s.forfeitBtn = ui.NewButton(20, 704, 140, 44, "Forfeit", func() {
+		if !s.forfeitSure {
+			s.forfeitSure = true
+			s.forfeitBtn.Text = "Sure?"
+		} else {
+			s.ws.Send(`{"type":"forfeit"}`)
+			s.forfeitBtn.SetHidden(true)
+			s.forfeitBtn.SetDisabled(true)
+		}
+	})
+	s.forfeitBtn.BgColor = deepWalnut
+	s.forfeitBtn.HoverColor = powderBlush
+	s.forfeitBtn.TextColor = white
+
 	return s
 }
 
@@ -148,6 +187,14 @@ func (s *Game) Update() error {
 				s.placeToken(s.hoverCol)
 			}
 		}
+
+		if !s.forfeitBtn.Disabled {
+			s.forfeitBtn.Update()
+		}
+
+	case phaseResult:
+		s.ticks++
+		s.backBtn.Update()
 	}
 
 	return nil
@@ -162,6 +209,45 @@ func (s *Game) placeToken(col int) {
 	}
 	b, _ := json.Marshal(msg)
 	s.ws.Send(string(b))
+}
+
+func findWinCells(board [6][7]int, player int) [][2]int {
+	if player == 0 {
+		return nil
+	}
+	for r := 0; r < 6; r++ {
+		for c := 0; c <= 3; c++ {
+			if board[r][c] == player && board[r][c+1] == player &&
+				board[r][c+2] == player && board[r][c+3] == player {
+				return [][2]int{{r, c}, {r, c + 1}, {r, c + 2}, {r, c + 3}}
+			}
+		}
+	}
+	for r := 0; r <= 2; r++ {
+		for c := 0; c < 7; c++ {
+			if board[r][c] == player && board[r+1][c] == player &&
+				board[r+2][c] == player && board[r+3][c] == player {
+				return [][2]int{{r, c}, {r + 1, c}, {r + 2, c}, {r + 3, c}}
+			}
+		}
+	}
+	for r := 0; r <= 2; r++ {
+		for c := 0; c <= 3; c++ {
+			if board[r][c] == player && board[r+1][c+1] == player &&
+				board[r+2][c+2] == player && board[r+3][c+3] == player {
+				return [][2]int{{r, c}, {r + 1, c + 1}, {r + 2, c + 2}, {r + 3, c + 3}}
+			}
+		}
+	}
+	for r := 3; r < 6; r++ {
+		for c := 0; c <= 3; c++ {
+			if board[r][c] == player && board[r-1][c+1] == player &&
+				board[r-2][c+2] == player && board[r-3][c+3] == player {
+				return [][2]int{{r, c}, {r - 1, c + 1}, {r - 2, c + 2}, {r - 3, c + 3}}
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Game) handleMessage(raw string) {
@@ -209,14 +295,23 @@ func (s *Game) handleMessage(raw string) {
 		if json.Unmarshal(h.Payload, &p) != nil {
 			return
 		}
-		session.CurrentResult = &session.GameResult{
+		s.result = session.GameResult{
 			Outcome:   p.Outcome,
 			WinColor:  p.WinColor,
 			ELOBefore: p.ELOBefore,
 			ELOAfter:  p.ELOAfter,
 			ELODelta:  p.ELODelta,
 		}
-		s.mgr.Navigate(IDResult)
+		var winner int
+		if p.WinColor == "red" {
+			winner = 1
+		} else if p.WinColor == "yellow" {
+			winner = 2
+		}
+		s.winCells = findWinCells(s.cells, winner)
+		s.phase = phaseResult
+		s.ticks = 0
+		s.backBtn.SetHidden(false)
 	}
 }
 
@@ -285,5 +380,70 @@ func (s *Game) Draw(screen *ebiten.Image) {
 		b := text.BoundString(basicfont.Face7x13, txt)
 		tx := (1024 - b.Dx()) / 2
 		text.Draw(screen, txt, basicfont.Face7x13, tx, 768/2, color.RGBA{0xff, 0xcc, 0x00, 0xff})
+	}
+
+	if s.phase == phaseResult {
+		for _, cell := range s.winCells {
+			r, c := cell[0], cell[1]
+			img := s.red
+			if s.cells[r][c] == 2 {
+				img = s.yel
+			}
+			imageRow := 5 - r
+			tx := boardScreenX + (gridLeft+float64(c)*colStep)*scale
+			ty := boardScreenY + (gridTop+float64(imageRow)*rowStep)*scale
+			opts := &ebiten.DrawImageOptions{}
+			opts.GeoM.Scale(scale, scale)
+			opts.GeoM.Translate(tx, ty)
+			shine := float32(1.3 + 0.3*math.Sin(float64(s.ticks)*0.1))
+			opts.ColorScale.Scale(shine, shine, shine, 1)
+			screen.DrawImage(img, opts)
+		}
+
+		screen.DrawImage(s.overlay, nil)
+
+		var outcomeText string
+		var outcomeColor color.Color
+		switch s.result.Outcome {
+		case "win":
+			outcomeText = "You Win!"
+			outcomeColor = color.RGBA{0x40, 0xff, 0x40, 0xff}
+		case "loss":
+			outcomeText = "You Lose"
+			outcomeColor = color.RGBA{0xff, 0x60, 0x60, 0xff}
+		default:
+			outcomeText = "Draw"
+			outcomeColor = color.RGBA{0xff, 0xff, 0x40, 0xff}
+		}
+		b := text.BoundString(basicfont.Face7x13, outcomeText)
+		tx := (1024 - b.Dx()) / 2
+		text.Draw(screen, outcomeText, basicfont.Face7x13, tx, 250, outcomeColor)
+
+		if s.result.Outcome != "draw" {
+			colorText := s.result.WinColor + " wins"
+			cb := text.BoundString(basicfont.Face7x13, colorText)
+			ctx := (1024 - cb.Dx()) / 2
+			text.Draw(screen, colorText, basicfont.Face7x13, ctx, 280, frostedMint)
+		}
+
+		delta := s.result.ELOAfter - s.result.ELOBefore
+		var eloText string
+		var eloColor color.Color
+		if delta >= 0 {
+			eloText = fmt.Sprintf("%d → %d (+%d)", s.result.ELOBefore, s.result.ELOAfter, delta)
+			eloColor = color.RGBA{0x40, 0xff, 0x40, 0xff}
+		} else {
+			eloText = fmt.Sprintf("%d → %d (%d)", s.result.ELOBefore, s.result.ELOAfter, delta)
+			eloColor = color.RGBA{0xff, 0x60, 0x60, 0xff}
+		}
+		eb := text.BoundString(basicfont.Face7x13, eloText)
+		etx := (1024 - eb.Dx()) / 2
+		text.Draw(screen, eloText, basicfont.Face7x13, etx, 350, eloColor)
+
+		s.backBtn.Draw(screen)
+	}
+
+	if s.phase == phasePlaying && !s.forfeitBtn.Disabled {
+		s.forfeitBtn.Draw(screen)
 	}
 }

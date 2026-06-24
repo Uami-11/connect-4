@@ -16,6 +16,7 @@ type Menu struct {
 	findMatchBtn   *ui.Button
 	profileBtn     *ui.Button
 	leaderboardBtn *ui.Button
+	howToPlayBtn   *ui.Button
 	signOutBtn     *ui.Button
 }
 
@@ -23,8 +24,8 @@ func NewMenu(mgr *Manager) *Menu {
 	btnW, btnH := 260, 52
 	btnX := (1024 - btnW) / 2
 
-	// Vertical center: 4 buttons + 3 gaps
-	totalH := 4*btnH + 3*12
+	// Vertical center: 5 buttons + 4 gaps
+	totalH := 5*btnH + 4*12
 	startY := (768 - totalH) / 2
 
 	s := &Menu{
@@ -41,12 +42,15 @@ func NewMenu(mgr *Manager) *Menu {
 	s.leaderboardBtn = ui.NewButton(btnX, startY+(btnH+12)*2, btnW, btnH, "Leaderboard", func() {
 		mgr.Navigate(IDLeaderboard)
 	})
-	s.signOutBtn = ui.NewButton(btnX, startY+(btnH+12)*3, btnW, btnH, "Sign Out", func() {
+	s.howToPlayBtn = ui.NewButton(btnX, startY+(btnH+12)*3, btnW, btnH, "How to Play", func() {
+		mgr.Navigate(IDHowToPlay)
+	})
+	s.signOutBtn = ui.NewButton(btnX, startY+(btnH+12)*4, btnW, btnH, "Sign Out", func() {
 		session.Current.Clear()
 		mgr.Reset()
 	})
 
-	for _, b := range []*ui.Button{s.findMatchBtn, s.profileBtn, s.leaderboardBtn, s.signOutBtn} {
+	for _, b := range []*ui.Button{s.findMatchBtn, s.profileBtn, s.leaderboardBtn, s.howToPlayBtn, s.signOutBtn} {
 		b.BgColor = deepWalnut
 		b.TextColor = white
 		b.HoverColor = darkCyan
@@ -60,6 +64,7 @@ func (s *Menu) Update() error {
 	s.findMatchBtn.Update()
 	s.profileBtn.Update()
 	s.leaderboardBtn.Update()
+	s.howToPlayBtn.Update()
 	s.signOutBtn.Update()
 	return nil
 }
@@ -69,5 +74,6 @@ func (s *Menu) Draw(screen *ebiten.Image) {
 	s.findMatchBtn.Draw(screen)
 	s.profileBtn.Draw(screen)
 	s.leaderboardBtn.Draw(screen)
+	s.howToPlayBtn.Draw(screen)
 	s.signOutBtn.Draw(screen)
 }

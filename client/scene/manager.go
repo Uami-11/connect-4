@@ -18,7 +18,7 @@ const (
 	IDMenu
 	IDMatchmaking
 	IDGame
-	IDResult
+	IDHowToPlay
 	IDProfile
 	IDProfileOther
 	IDLeaderboard
