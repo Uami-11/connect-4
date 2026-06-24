@@ -226,23 +226,43 @@ func (m *Match) HandleDisconnect(c *Client) {
 
 // TryRejoin checks if the given token belongs to the disconnected player
 // and reconnects them if so.
+// drainChan transfers any buffered messages from src to dst without blocking.
+func drainChan(src, dst chan []byte) {
+	for {
+		select {
+		case msg := <-src:
+			select {
+			case dst <- msg:
+			default:
+			}
+		default:
+			return
+		}
+	}
+}
+
 func (m *Match) TryRejoin(token string, newClient *Client) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.state != StateReconnecting || m.disconnected == nil {
-		return false
-	}
-	if m.disconnected.Token != token {
-		return false
-	}
-	// Replace the old client with the new connection.
-	if m.disconnected == m.p1 {
+
+	// Match by token to either player (supports both reconnect and challenge-accept join).
+	if m.p1.Token == token {
+		drainChan(m.p1.Send, newClient.Send)
 		m.p1 = newClient
-	} else {
-		m.p2 = newClient
+		if m.state == StateReconnecting && m.disconnected == m.p1 {
+			m.reconnectCh <- newClient
+		}
+		return true
 	}
-	m.reconnectCh <- newClient
-	return true
+	if m.p2.Token == token {
+		drainChan(m.p2.Send, newClient.Send)
+		m.p2 = newClient
+		if m.state == StateReconnecting && m.disconnected == m.p2 {
+			m.reconnectCh <- newClient
+		}
+		return true
+	}
+	return false
 }
 
 // handleForfeit processes a player forfeiting the match.

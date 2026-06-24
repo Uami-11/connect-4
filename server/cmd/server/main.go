@@ -52,12 +52,14 @@ func main() {
 
 	queries := db.New(pool)
 	mm := game.NewMatchmaker(queries)
+	cm := game.NewChallengeManager(queries)
 
 	// Handlers.
 	authHandler := handler.NewAuth(queries, jwtSecret)
 	leaderboardHandler := handler.NewLeaderboard(queries)
 	profileHandler := handler.NewProfile(queries)
 	wsHandler := handler.NewWS(mm, jwtSecret)
+	challengeHandler := handler.NewChallengeHTTP(cm, mm, jwtSecret)
 
 	mux := http.NewServeMux()
 
@@ -66,6 +68,10 @@ func main() {
 	mux.HandleFunc("POST /login", authHandler.Login)
 	mux.HandleFunc("GET /leaderboard", leaderboardHandler.Get)
 	mux.HandleFunc("GET /profile/{username}", profileHandler.Get)
+	mux.HandleFunc("POST /challenge/send", challengeHandler.Send)
+	mux.HandleFunc("GET /challenge/pending", challengeHandler.Pending)
+	mux.HandleFunc("POST /challenge/accept", challengeHandler.Accept)
+	mux.HandleFunc("POST /challenge/reject", challengeHandler.Reject)
 	mux.Handle("/ws", http.HandlerFunc(wsHandler.ServeHTTP))
 
 	// Serve WASM client static files.

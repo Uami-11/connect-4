@@ -98,3 +98,21 @@ type PlacePayload struct {
 type RejoinPayload struct {
 	Token string `json:"token"`
 }
+
+// ChallengePayload is the inbound body of a challenge_send or challenge_accept.
+type ChallengePayload struct {
+	TargetUsername string `json:"target_username,omitempty"`
+	FromUsername   string `json:"from_username,omitempty"`
+}
+
+// ChallengeInfo is returned by GET /challenge/pending.
+type ChallengeInfo struct {
+	FromUsername string `json:"from_username,omitempty"`
+	ToUsername   string `json:"to_username,omitempty"`
+	Status       string `json:"status"` // "pending", "accepted", "rejected", "cancelled"
+
+	// Only for accepted challenges (used to navigate to game).
+	OpponentName string `json:"opponent_name,omitempty"`
+	YourColor    string `json:"your_color,omitempty"`
+	YourTurn     bool   `json:"your_turn,omitempty"`
+}
