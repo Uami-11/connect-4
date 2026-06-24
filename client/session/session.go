@@ -41,6 +41,25 @@ type GameResult struct {
 // Cleared when the result scene is done.
 var CurrentResult *GameResult
 
+// PendingChallenge represents an incoming or accepted challenge.
+type PendingChallenge struct {
+	FromUsername string // who sent it
+	Status       string // "pending", "accepted"
+	// For accepted challenges, used to navigate to game.
+	OpponentName string
+	YourColor    string
+	YourTurn     bool
+}
+
+// CurrentChallenge is set by the polling loop in Manager.Update when
+// a pending challenge is detected. Cleared when the user acts on it.
+var CurrentChallenge *PendingChallenge
+
+// ClearChallenge resets the current challenge state.
+func ClearChallenge() {
+	CurrentChallenge = nil
+}
+
 // CurrentOtherUsername holds the username to view in ProfileOther.
 // Set before navigating to IDProfileOther.
 var CurrentOtherUsername string
