@@ -5,6 +5,7 @@ package scene
 import (
 	"encoding/json"
 	"image/color"
+	"strings"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -39,8 +40,11 @@ type ProfileOther struct {
 	online     bool
 	history    []historyEntry
 
-	scrollY int
-	backBtn *ui.Button
+	scrollY      int
+	backBtn      *ui.Button
+	requestBtn   *ui.Button
+	challengeReq *net.PendingRequest
+	challengeErr string
 }
 
 // NewProfileOther creates a public profile scene for the given username.
@@ -58,6 +62,22 @@ func NewProfileOther(mgr *Manager, username string) *ProfileOther {
 	s.backBtn.BgColor = deepWalnut
 	s.backBtn.HoverColor = darkCyan
 	s.backBtn.TextColor = white
+
+	// Hide "Request Match" when viewing own profile.
+	showRequest := username != session.Current.Username
+	s.requestBtn = ui.NewButton(0, 0, 150, 36, "Request Match", func() {
+		if s.challengeReq != nil {
+			return
+		}
+		body := map[string]string{"target_username": s.targetUsername}
+		s.challengeReq = net.StartPostAuth("/challenge/send", body, session.Current.Token)
+	})
+	s.requestBtn.BgColor = color.RGBA{0x44, 0xcc, 0x44, 0xff}
+	s.requestBtn.HoverColor = color.RGBA{0x33, 0xaa, 0x33, 0xff}
+	s.requestBtn.TextColor = white
+	if !showRequest {
+		s.requestBtn.SetHidden(true)
+	}
 
 	return s
 }
@@ -98,6 +118,38 @@ func (s *ProfileOther) Update() error {
 
 	// Back button.
 	s.backBtn.Update()
+
+	// Poll challenge request response.
+	if s.challengeReq != nil {
+		net.Poll(s.challengeReq)
+		if s.challengeReq.Done {
+			req := s.challengeReq
+			s.challengeReq = nil
+			if req.Err() != nil {
+				body := strings.ToLower(req.Err().Error())
+				if strings.Contains(body, "already") || strings.Contains(body, "pending") {
+					s.challengeErr = "already requested"
+				} else {
+					s.challengeErr = "failed to send request"
+				}
+			} else {
+				s.challengeErr = ""
+				s.requestBtn.SetDisabled(true)
+				s.requestBtn.Text = "Requested"
+			}
+		}
+	}
+
+	// Update request button position dynamically (based on username text width).
+	if s.loaded {
+		bounds := text.BoundString(basicfont.Face7x13, s.targetUsername)
+		btnX := 80 + bounds.Dx()*2 + 20
+		s.requestBtn.X = btnX
+		s.requestBtn.Y = 42
+		if s.challengeReq == nil && !s.requestBtn.Disabled {
+			s.requestBtn.Update()
+		}
+	}
 
 	// Scrolling and click handling (only when loaded).
 	if s.loaded && len(s.history) > 0 {
@@ -237,6 +289,12 @@ func (s *ProfileOther) Draw(screen *ebiten.Image) {
 
 	// Username (scaled 2x).
 	s.drawScaledText(screen, s.targetUsername, float64(lx), 60, 2, frostedMint)
+
+	// Request Match button (right of username).
+	s.requestBtn.Draw(screen)
+	if s.challengeErr != "" {
+		text.Draw(screen, s.challengeErr, basicfont.Face7x13, s.requestBtn.X, s.requestBtn.Y+50, matchErrColor)
+	}
 
 	// ELO.
 	eloStr := "Rating: " + itoa(s.elo)
