@@ -128,6 +128,7 @@ func (s *Login) Update() error {
 				session.Current.Username = resp.Username
 				session.Current.ELO = resp.ELO
 				session.Current.LoggedIn = true
+				session.Current.Save()
 				s.loading = false
 				s.mgr.Navigate(IDMenu)
 			}
