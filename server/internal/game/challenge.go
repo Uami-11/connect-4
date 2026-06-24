@@ -174,6 +174,9 @@ func (cm *ChallengeManager) AcceptChallenge(acceptorID int, fromUsername, accept
 
 	id := matchID(p1, p2)
 	m := NewMatch(id, p1, p2, mm.queries, mm)
+	m.cleanup = func() {
+		cm.RemoveChallenge(ch)
+	}
 	mm.mu.Lock()
 	mm.matches[id] = m
 	mm.mu.Unlock()
@@ -190,8 +193,8 @@ func (cm *ChallengeManager) AcceptChallenge(acceptorID int, fromUsername, accept
 	return info, nil
 }
 
-// removeChallenge deletes a challenge from both lookup maps.
-func (cm *ChallengeManager) removeChallenge(ch *Challenge) {
+// RemoveChallenge deletes a challenge from both lookup maps.
+func (cm *ChallengeManager) RemoveChallenge(ch *Challenge) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 

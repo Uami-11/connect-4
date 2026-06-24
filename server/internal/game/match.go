@@ -49,7 +49,8 @@ type Match struct {
 	reconnectCh  chan *Client // filled when they come back
 	cancelTimer  context.CancelFunc
 
-	mm *Matchmaker // owning matchmaker, for self-removal on finish
+	mm      *Matchmaker // owning matchmaker, for self-removal on finish
+	cleanup func()     // called in finish to release associated resources (e.g. challenge)
 }
 
 // NewMatch creates and immediately starts a match between two clients.
@@ -248,7 +249,10 @@ func (m *Match) TryRejoin(token string, newClient *Client) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Match by token to either player (supports both reconnect and challenge-accept join).
+	if m.state != StateReconnecting || m.disconnected == nil {
+		return false
+	}
+
 	if m.p1.Token == token {
 		drainChan(m.p1.Send, newClient.Send)
 		m.p1 = newClient
@@ -263,7 +267,7 @@ func (m *Match) TryRejoin(token string, newClient *Client) bool {
 		if m.state == StateReconnecting && m.disconnected == m.p2 {
 			m.reconnectCh <- newClient
 		}
-			return true
+		return true
 	}
 	return false
 }
@@ -381,6 +385,9 @@ func (m *Match) finish(winner, loser *Client) {
 	send(m.p1, new1)
 	send(m.p2, new2)
 
+	if m.cleanup != nil {
+		m.cleanup()
+	}
 	if m.mm != nil {
 		m.mm.Remove(m.id)
 	}
