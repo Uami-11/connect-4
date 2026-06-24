@@ -43,8 +43,9 @@ type Manager struct {
 	next    *ID // set by a scene to request a transition
 
 	// Challenge overlay state
-	challengePollTick int
-	challengePollReq  *net.PendingRequest
+	challengePollTick    int
+	challengePollReq     *net.PendingRequest
+	challengeHandledUser string // username of challenge we already navigated from; skip in future polls
 
 	challengeActionReq  *net.PendingRequest
 	challengeActionType string      // "accept" or "reject"
@@ -109,6 +110,7 @@ func (m *Manager) Back() {
 // Reset clears the stack and goes to login (used on sign-out).
 func (m *Manager) Reset() {
 	session.ClearChallenge()
+	m.challengeHandledUser = ""
 	m.stack = []ID{IDLogin}
 	m.current = m.scenes[IDLogin]()
 }
@@ -127,8 +129,9 @@ func (m *Manager) Update() error {
 		return err
 	}
 
-	// Poll for incoming challenges (only when logged in and not in login).
-	if session.Current.LoggedIn && m.currentID() != IDLogin {
+	// Poll for incoming challenges (only when in eligible scenes).
+	id := m.currentID()
+	if session.Current.LoggedIn && id != IDLogin && id != IDMatchmaking && id != IDGame {
 		m.pollChallenges()
 	}
 	return nil
@@ -181,6 +184,7 @@ func (m *Manager) pollChallengeAction() {
 		} else {
 			session.CurrentMatchColor = 1
 		}
+		m.challengeHandledUser = m.challengeFromUser
 		session.ClearChallenge()
 		m.Navigate(IDMatchmaking)
 		return
@@ -259,6 +263,18 @@ func (m *Manager) handleChallengeResponse() {
 		return
 	}
 
+	// Skip if we already acted on a challenge (prevents re-navigation after game ends).
+	alreadyActed := false
+	for _, c := range challenges {
+		if m.challengeHandledUser != "" && (c.FromUsername == m.challengeHandledUser || c.ToUsername == m.challengeHandledUser) {
+			alreadyActed = true
+			break
+		}
+	}
+	if alreadyActed {
+		return
+	}
+
 	// Check for accepted outgoing challenge → navigate to matchmaking.
 	for _, c := range challenges {
 		if c.Status == "accepted" && c.OpponentName != "" {
@@ -267,6 +283,10 @@ func (m *Manager) handleChallengeResponse() {
 				session.CurrentMatchColor = 2
 			} else {
 				session.CurrentMatchColor = 1
+			}
+			m.challengeHandledUser = c.FromUsername
+			if c.ToUsername != "" {
+				m.challengeHandledUser = c.ToUsername
 			}
 			session.ClearChallenge()
 			m.Navigate(IDMatchmaking)
