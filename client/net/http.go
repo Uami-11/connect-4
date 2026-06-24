@@ -30,6 +30,23 @@ func StartPost(path string, body any) *PendingRequest {
 	return &PendingRequest{req: req}
 }
 
+// StartPostAuth is like StartPost but includes a Bearer token.
+func StartPostAuth(path string, body any, token string) *PendingRequest {
+	b, err := json.Marshal(body)
+	if err != nil {
+		return &PendingRequest{Done: true, err: fmt.Errorf("marshalling body: %w", err)}
+	}
+	req := js.Global().Get("XMLHttpRequest").New()
+	url := js.Global().Get("location").Get("origin").String() + path
+	req.Call("open", "POST", url, true)
+	req.Call("setRequestHeader", "Content-Type", "application/json")
+	if token != "" {
+		req.Call("setRequestHeader", "Authorization", "Bearer "+token)
+	}
+	req.Call("send", string(b))
+	return &PendingRequest{req: req}
+}
+
 func StartGet(path, token string) *PendingRequest {
 	req := js.Global().Get("XMLHttpRequest").New()
 	url := js.Global().Get("location").Get("origin").String() + path
@@ -59,6 +76,11 @@ func Poll(pr *PendingRequest) {
 		}
 		pr.err = fmt.Errorf("server error %d: %s", status, body)
 	}
+}
+
+// Err returns any error that occurred during the request.
+func (pr *PendingRequest) Err() error {
+	return pr.err
 }
 
 func DecodeResult(pr *PendingRequest, result any) error {
