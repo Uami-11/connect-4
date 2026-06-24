@@ -140,12 +140,10 @@ func (s *ProfileOther) Update() error {
 		}
 	}
 
-	// Update request button position dynamically (based on username text width).
+	// Position request button at far-right of inner box, aligned with username.
 	if s.loaded {
-		bounds := text.BoundString(basicfont.Face7x13, s.targetUsername)
-		btnX := 80 + bounds.Dx()*2 + 20
-		s.requestBtn.X = btnX
-		s.requestBtn.Y = 42
+		s.requestBtn.X = 794
+		s.requestBtn.Y = 58
 		if s.challengeReq == nil && !s.requestBtn.Disabled {
 			s.requestBtn.Update()
 		}

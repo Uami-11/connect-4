@@ -211,13 +211,24 @@ func (m *Manager) doChallengeReject() {
 }
 
 func (m *Manager) pollChallenges() {
+	// Every frame: check if an in-flight poll request completed.
+	if m.challengePollReq != nil {
+		net.Poll(m.challengePollReq)
+		if !m.challengePollReq.Done {
+			return
+		}
+		m.handleChallengeResponse()
+		return
+	}
+
+	// Throttle starting new polls to every 30 frames.
 	m.challengePollTick++
 	if m.challengePollTick < 30 {
 		return
 	}
 	m.challengePollTick = 0
 
-	// Only poll if no challenge is active and no action is pending.
+	// Skip if a challenge or action is already pending.
 	if session.CurrentChallenge != nil && session.CurrentChallenge.Status == "pending" {
 		return
 	}
@@ -226,10 +237,9 @@ func (m *Manager) pollChallenges() {
 	}
 
 	m.challengePollReq = net.StartGet("/challenge/pending", session.Current.Token)
-	net.Poll(m.challengePollReq)
-	if !m.challengePollReq.Done {
-		return
-	}
+}
+
+func (m *Manager) handleChallengeResponse() {
 	req := m.challengePollReq
 	m.challengePollReq = nil
 
