@@ -39,6 +39,10 @@ func main() {
 
 	mgr := buildManager()
 
+	if session.LoadSession() {
+		mgr.Navigate(scene.IDMenu)
+	}
+
 	if err := ebiten.RunGame(&game{mgr: mgr}); err != nil {
 		log.Fatal(err)
 	}
