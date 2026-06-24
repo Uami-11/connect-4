@@ -110,13 +110,20 @@ func (m *Match) HandleMessage(c *Client, raw []byte) {
 	if m.state != StateActive {
 		return
 	}
-	if m.turn != c.Color {
-		m.sendError(c, "not your turn")
-		return
-	}
 
 	var msg model.WSMessage
 	if err := json.Unmarshal(raw, &msg); err != nil {
+		return
+	}
+
+	// Forfeit allowed regardless of turn.
+	if msg.Type == "forfeit" {
+		m.handleForfeit(c)
+		return
+	}
+
+	if m.turn != c.Color {
+		m.sendError(c, "not your turn")
 		return
 	}
 	if msg.Type != "place" {
@@ -138,11 +145,13 @@ func (m *Match) HandleMessage(c *Client, raw []byte) {
 
 	// Check win
 	if m.board.CheckWin(c.Color) {
+		m.broadcastState()
 		m.finish(c, opponent(c, m.p1, m.p2))
 		return
 	}
 	// Check draw
 	if m.board.IsFull() {
+		m.broadcastState()
 		m.finish(nil, nil)
 		return
 	}
@@ -234,6 +243,17 @@ func (m *Match) TryRejoin(token string, newClient *Client) bool {
 	}
 	m.reconnectCh <- newClient
 	return true
+}
+
+// handleForfeit processes a player forfeiting the match.
+func (m *Match) handleForfeit(c *Client) {
+	if m.state != StateActive {
+		m.sendError(c, "game not active")
+		return
+	}
+	other := opponent(c, m.p1, m.p2)
+	m.broadcastState()
+	m.finish(other, c)
 }
 
 // finish ends the match, calculates ELO, and notifies both players.
