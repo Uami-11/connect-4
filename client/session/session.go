@@ -45,10 +45,30 @@ var CurrentResult *GameResult
 // Set before navigating to IDProfileOther.
 var CurrentOtherUsername string
 
+// Save persists the session to localStorage.
+func (s *State) Save() {
+	saveSession(s.Token, s.Username, s.ELO)
+}
+
+// LoadSession reads saved credentials from localStorage and populates Current.
+// Returns true if a saved session was found.
+func LoadSession() bool {
+	token, username, elo, ok := loadSession()
+	if !ok {
+		return false
+	}
+	Current.Token = token
+	Current.Username = username
+	Current.ELO = elo
+	Current.LoggedIn = true
+	return true
+}
+
 // Clear resets the session (sign-out).
 func (s *State) Clear() {
 	s.Token = ""
 	s.Username = ""
 	s.ELO = 0
 	s.LoggedIn = false
+	clearSession()
 }
