@@ -110,7 +110,7 @@ func (s *Game) Update() error {
 			mouseCol = c
 		}
 
-		if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
+		if inpututil.IsKeyJustPressed(ebiten.KeyLeft) || inpututil.IsKeyJustPressed(ebiten.KeyA) {
 			if s.hoverCol <= 0 {
 				s.hoverCol = 6
 			} else {
@@ -118,7 +118,7 @@ func (s *Game) Update() error {
 			}
 			s.keyboardActive = true
 		}
-		if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
+		if inpututil.IsKeyJustPressed(ebiten.KeyRight) || inpututil.IsKeyJustPressed(ebiten.KeyD) {
 			if s.hoverCol >= 6 {
 				s.hoverCol = 0
 			} else {
@@ -142,7 +142,9 @@ func (s *Game) Update() error {
 
 		if s.myTurn && s.hoverCol >= 0 {
 			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) ||
-				inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+				inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
+				inpututil.IsKeyJustPressed(ebiten.KeyDown) ||
+				inpututil.IsKeyJustPressed(ebiten.KeyS) {
 				s.placeToken(s.hoverCol)
 			}
 		}
