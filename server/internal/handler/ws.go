@@ -162,7 +162,7 @@ func readPump(conn *websocket.Conn, c *game.Client, m *game.Match, mm *game.Matc
 		if err := json.Unmarshal(raw, &msg); err != nil {
 			continue
 		}
-		if msg.Type == "place" {
+		if msg.Type == "place" || msg.Type == "forfeit" {
 			m.HandleMessage(c, raw)
 		}
 	}
