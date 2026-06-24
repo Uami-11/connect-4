@@ -101,6 +101,7 @@ func NewGame(mgr *Manager) *Game {
 		session.CurrentMatchColor = 0
 		session.CurrentMatchOpponent = ""
 		session.CurrentResult = nil
+		mgr.challengeHandledUser = ""
 		mgr.Navigate(IDMenu)
 	})
 	s.backBtn.BgColor = deepWalnut
