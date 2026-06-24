@@ -48,10 +48,12 @@ type Match struct {
 	disconnected *Client    // the client who left
 	reconnectCh  chan *Client // filled when they come back
 	cancelTimer  context.CancelFunc
+
+	mm *Matchmaker // owning matchmaker, for self-removal on finish
 }
 
 // NewMatch creates and immediately starts a match between two clients.
-func NewMatch(id string, p1, p2 *Client, queries *db.Queries) *Match {
+func NewMatch(id string, p1, p2 *Client, queries *db.Queries, mm *Matchmaker) *Match {
 	p1.Color = Red
 	p2.Color = Yellow
 	m := &Match{
@@ -62,6 +64,7 @@ func NewMatch(id string, p1, p2 *Client, queries *db.Queries) *Match {
 		state:       StateActive,
 		queries:     queries,
 		reconnectCh: make(chan *Client, 1),
+		mm:          mm,
 	}
 	m.sendMatched()
 	go m.readLoop(p1, p2)
@@ -260,6 +263,33 @@ func (m *Match) TryRejoin(token string, newClient *Client) bool {
 		if m.state == StateReconnecting && m.disconnected == m.p2 {
 			m.reconnectCh <- newClient
 		}
+			return true
+	}
+	return false
+}
+
+// InjectClient replaces a client in an active match by token (used for
+// challenge-accepted joins where TryRejoin won't fire because the match
+// is StateActive, not StateReconnecting). Preserves Color from the
+// replaced client and drains any buffered messages.
+func (m *Match) InjectClient(token string, newClient *Client) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.state == StateFinished {
+		return false
+	}
+
+	if m.p1.Token == token {
+		drainChan(m.p1.Send, newClient.Send)
+		newClient.Color = m.p1.Color
+		m.p1 = newClient
+		return true
+	}
+	if m.p2.Token == token {
+		drainChan(m.p2.Send, newClient.Send)
+		newClient.Color = m.p2.Color
+		m.p2 = newClient
 		return true
 	}
 	return false
@@ -350,6 +380,10 @@ func (m *Match) finish(winner, loser *Client) {
 	}
 	send(m.p1, new1)
 	send(m.p2, new2)
+
+	if m.mm != nil {
+		m.mm.Remove(m.id)
+	}
 }
 
 // broadcastState sends the current board and turn to both players.

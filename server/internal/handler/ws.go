@@ -58,7 +58,7 @@ func (h *WS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Mark player as active.
 	h.mm.UpdateLastActive(context.Background(), claims.UserID)
 
-	// Check if this is a reconnect attempt.
+	// Check if this player already has a match (reconnect or challenge-accepted).
 	if existing := h.mm.FindMatch(authMsg.Token); existing != nil {
 		elo, _ := h.mm.GetELO(context.Background(), claims.UserID)
 		newClient := &game.Client{
@@ -68,8 +68,16 @@ func (h *WS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Send:     make(chan []byte, 64),
 			Token:    authMsg.Token,
 		}
+		// Try reconnect first (StateReconnecting).
 		if existing.TryRejoin(authMsg.Token, newClient) {
 			log.Printf("player %s rejoined match\n", claims.Username)
+			go writePump(conn, newClient)
+			readPump(conn, newClient, existing, h.mm)
+			return
+		}
+		// Try challenge-accept injection (StateActive with placeholder client).
+		if existing.InjectClient(authMsg.Token, newClient) {
+			log.Printf("player %s joined challenge match\n", claims.Username)
 			go writePump(conn, newClient)
 			readPump(conn, newClient, existing, h.mm)
 			return

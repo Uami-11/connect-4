@@ -115,8 +115,8 @@ func (cm *ChallengeManager) GetPending(userID int) []model.ChallengeInfo {
 		}
 		if c.Status == ChallengeAccepted {
 			info.OpponentName = c.ToUsername
-			info.YourColor = "yellow"
-			info.YourTurn = false
+			info.YourColor = "red"
+			info.YourTurn = true
 		}
 		result = append(result, info)
 	}
@@ -173,7 +173,7 @@ func (cm *ChallengeManager) AcceptChallenge(acceptorID int, fromUsername, accept
 	}
 
 	id := matchID(p1, p2)
-	m := NewMatch(id, p1, p2, mm.queries)
+	m := NewMatch(id, p1, p2, mm.queries, mm)
 	mm.mu.Lock()
 	mm.matches[id] = m
 	mm.mu.Unlock()

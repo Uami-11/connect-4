@@ -40,7 +40,7 @@ func (mm *Matchmaker) Enqueue(c *Client) *Match {
 	mm.waiting = nil
 
 	id := matchID(p1, c)
-	m := NewMatch(id, p1, c, mm.queries)
+	m := NewMatch(id, p1, c, mm.queries, mm)
 	mm.matches[id] = m
 	return m
 }

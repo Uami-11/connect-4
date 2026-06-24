@@ -77,6 +77,11 @@ func NewMatchmaking(mgr *Manager) *Matchmaking {
 	s.backBtn.TextColor = color.RGBA{0xff, 0xff, 0xff, 0xff}
 	s.backBtn.SetHidden(true)
 
+	if session.CurrentWS != nil {
+		session.CurrentWS.Close()
+		session.CurrentWS = nil
+	}
+
 	ws, err := net.NewWSConn()
 	if err != nil {
 		s.state = matchError

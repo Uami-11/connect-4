@@ -94,6 +94,9 @@ func NewGame(mgr *Manager) *Game {
 	btnW, btnH := 220, 44
 	btnX := (1024 - btnW) / 2
 	s.backBtn = ui.NewButton(btnX, 600, btnW, btnH, "Back to Menu", func() {
+		if s.ws != nil {
+			s.ws.Close()
+		}
 		session.CurrentWS = nil
 		session.CurrentMatchColor = 0
 		session.CurrentMatchOpponent = ""
