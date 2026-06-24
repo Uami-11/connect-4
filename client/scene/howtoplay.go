@@ -82,7 +82,7 @@ func NewHowToPlay(mgr *Manager) *HowToPlay {
 }
 
 func (s *HowToPlay) Update() error {
-	s.backBtn.Update()
+	backClicked := s.backBtn.Update()
 
 	switch s.phase {
 	case tutPhasePlaying:
@@ -135,8 +135,8 @@ func (s *HowToPlay) Update() error {
 			}
 		}
 
-		if s.myTurn && s.hoverCol >= 0 {
-			if (inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && !s.backBtn.IsHovered()) ||
+		if s.myTurn && s.hoverCol >= 0 && !backClicked {
+			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) ||
 				inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
 				inpututil.IsKeyJustPressed(ebiten.KeyDown) ||
 				inpututil.IsKeyJustPressed(ebiten.KeyS) {
