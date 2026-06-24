@@ -190,6 +190,28 @@ func (cm *ChallengeManager) AcceptChallenge(acceptorID int, fromUsername, accept
 	return info, nil
 }
 
+// removeChallenge deletes a challenge from both lookup maps.
+func (cm *ChallengeManager) removeChallenge(ch *Challenge) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	senderList := cm.bySender[ch.FromUserID]
+	for i, c := range senderList {
+		if c == ch {
+			cm.bySender[ch.FromUserID] = append(senderList[:i], senderList[i+1:]...)
+			break
+		}
+	}
+
+	targetList := cm.byTarget[ch.ToUserID]
+	for i, c := range targetList {
+		if c == ch {
+			cm.byTarget[ch.ToUserID] = append(targetList[:i], targetList[i+1:]...)
+			break
+		}
+	}
+}
+
 // RejectChallenge rejects a pending challenge.
 func (cm *ChallengeManager) RejectChallenge(rejectorID int, fromUsername string) error {
 	cm.mu.Lock()
