@@ -26,7 +26,6 @@ const (
 	tutorialGridTop      = 67
 	tutorialHoverTokenY  = 80
 	tutorialAIDelay      = 30
-	tutorialPauseFrames  = 300
 )
 
 type tutorialPhase int
@@ -34,7 +33,6 @@ type tutorialPhase int
 const (
 	tutPhasePlaying tutorialPhase = iota
 	tutPhasePause
-	tutPhaseResult
 )
 
 type HowToPlay struct {
@@ -48,7 +46,6 @@ type HowToPlay struct {
 
 	board  [6][7]int
 	myTurn bool
-	winner int
 	aiTimer int
 
 	hoverCol       int
@@ -58,24 +55,21 @@ type HowToPlay struct {
 	winCells [][2]int
 	ticks    int
 
-	overlay *ebiten.Image
 	backBtn *ui.Button
 }
 
 func NewHowToPlay(mgr *Manager) *HowToPlay {
 	s := &HowToPlay{
-		mgr:            mgr,
-		bg:             assets.MustLoadImage("images/backgrounds/game.png"),
-		brd:            assets.MustLoadImage("images/main/board.png"),
-		red:            assets.MustLoadImage("images/main/red_token.png"),
-		yel:            assets.MustLoadImage("images/main/yellow_token.png"),
-		phase:          tutPhasePlaying,
-		myTurn:         true,
-		hoverCol:       -1,
-		lastMouseCol:   -1,
-		overlay:        ebiten.NewImage(1024, 768),
+		mgr:          mgr,
+		bg:           assets.MustLoadImage("images/backgrounds/game.png"),
+		brd:          assets.MustLoadImage("images/main/board.png"),
+		red:          assets.MustLoadImage("images/main/red_token.png"),
+		yel:          assets.MustLoadImage("images/main/yellow_token.png"),
+		phase:        tutPhasePlaying,
+		myTurn:       true,
+		hoverCol:     -1,
+		lastMouseCol: -1,
 	}
-	s.overlay.Fill(color.RGBA{0, 0, 0, 0x88})
 
 	s.backBtn = ui.NewButton(20, 704, 160, 44, "Back to Menu", func() {
 		mgr.Navigate(IDMenu)
@@ -152,12 +146,6 @@ func (s *HowToPlay) Update() error {
 
 	case tutPhasePause:
 		s.ticks++
-		if s.ticks >= tutorialPauseFrames {
-			s.phase = tutPhaseResult
-		}
-
-	case tutPhaseResult:
-		s.backBtn.Update()
 	}
 
 	return nil
@@ -170,7 +158,6 @@ func (s *HowToPlay) playerDrop(col int) {
 	}
 
 	if tutorialCheckWin(s.board, 1) {
-		s.winner = 1
 		s.winCells = findWinCells(s.board, 1)
 		s.phase = tutPhasePause
 		s.ticks = 0
@@ -200,7 +187,6 @@ func (s *HowToPlay) aiMove() {
 	tutorialDrop(&s.board, col, 2)
 
 	if tutorialCheckWin(s.board, 2) {
-		s.winner = 2
 		s.winCells = findWinCells(s.board, 2)
 		s.phase = tutPhasePause
 		s.ticks = 0
@@ -253,7 +239,7 @@ func (s *HowToPlay) Draw(screen *ebiten.Image) {
 	}
 
 	// Pulsing win tokens
-	if s.phase == tutPhasePause || s.phase == tutPhaseResult {
+	if s.phase == tutPhasePause {
 		for _, cell := range s.winCells {
 			r, c := cell[0], cell[1]
 			img := s.red
@@ -272,53 +258,51 @@ func (s *HowToPlay) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// Overlay on result
-	if s.phase == tutPhaseResult {
-		screen.DrawImage(s.overlay, nil)
-
-		var outcomeText string
-		var outcomeColor color.Color
-		switch s.winner {
-		case 1:
-			outcomeText = "You Win!"
-			outcomeColor = color.RGBA{0x40, 0xff, 0x40, 0xff}
-		case 2:
-			outcomeText = "You Lose"
-			outcomeColor = color.RGBA{0xff, 0x60, 0x60, 0xff}
-		default:
-			outcomeText = "Draw"
-			outcomeColor = color.RGBA{0xff, 0xff, 0x40, 0xff}
-		}
-		b := text.BoundString(basicfont.Face7x13, outcomeText)
-		tx := (1024 - b.Dx()) / 2
-		text.Draw(screen, outcomeText, basicfont.Face7x13, tx, 350, outcomeColor)
-	}
-
 	// Instructions
 	if s.phase == tutPhasePlaying || s.phase == tutPhasePause {
-		ix := 580
-		text.Draw(screen, "How to Play", basicfont.Face7x13, ix, 170, frostedMint)
+		ix := 590
+		s.drawScaledText(screen, "How to Play", float64(ix), 150, 3, frostedMint)
 
 		lines := []string{
-			"\u2022 Click a column to drop",
-			"  your token",
+			"\u2022 Click a column",
+			"  to drop your token",
 			"",
-			"\u2022 Arrow keys or W A S D",
-			"  to move the cursor",
+			"\u2022 Arrow keys or",
+			"  W A S D to move",
 			"",
-			"\u2022 Enter, Down, or S",
-			"  to drop",
+			"\u2022 Enter, Down,",
+			"  or S to drop",
 			"",
-			"\u2022 Get 4 in a row to win!",
+			"\u2022 Get 4 in a row",
+			"  to win!",
 		}
-		ly := 220
+		ly := 240.0
 		for _, line := range lines {
-			text.Draw(screen, line, basicfont.Face7x13, ix, ly, frostedMint)
-			ly += 24
+			s.drawScaledText(screen, line, float64(ix), ly, 1.7, frostedMint)
+			ly += 30
 		}
 	}
 
 	s.backBtn.Draw(screen)
+}
+
+func (s *HowToPlay) drawScaledText(screen *ebiten.Image, str string, x, y, scale float64, clr color.Color) {
+	bounds := text.BoundString(basicfont.Face7x13, str)
+	pad := 4
+	w := bounds.Dx() + pad*2
+	h := bounds.Dy() + pad*2
+	if w < 1 {
+		w = 1
+	}
+	if h < 1 {
+		h = 1
+	}
+	img := ebiten.NewImage(w, h)
+	text.Draw(img, str, basicfont.Face7x13, pad, pad+basicfont.Face7x13.Ascent, clr)
+	opts := &ebiten.DrawImageOptions{}
+	opts.GeoM.Scale(scale, scale)
+	opts.GeoM.Translate(x, y)
+	screen.DrawImage(img, opts)
 }
 
 // tutorial helpers
