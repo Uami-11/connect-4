@@ -138,7 +138,7 @@ func waitInQueue(conn *websocket.Conn, c *game.Client, mm *game.Matchmaker) {
 			mm.Dequeue(c)
 			conn.WriteJSON(model.WSMessage{Type: "cancelled"})
 			return
-		case "place":
+		case "place", "forfeit":
 			// Match may have been created while we were waiting.
 			if m := mm.FindMatch(c.Token); m != nil {
 				m.HandleMessage(c, raw)
