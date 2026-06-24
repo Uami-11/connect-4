@@ -179,17 +179,17 @@ func (s *Game) Update() error {
 			}
 		}
 
+		if !s.forfeitBtn.Disabled {
+			s.forfeitBtn.Update()
+		}
+
 		if s.myTurn && s.hoverCol >= 0 {
-			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) ||
+			if (inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && !s.forfeitBtn.IsHovered()) ||
 				inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
 				inpututil.IsKeyJustPressed(ebiten.KeyDown) ||
 				inpututil.IsKeyJustPressed(ebiten.KeyS) {
 				s.placeToken(s.hoverCol)
 			}
-		}
-
-		if !s.forfeitBtn.Disabled {
-			s.forfeitBtn.Update()
 		}
 
 	case phaseResult:

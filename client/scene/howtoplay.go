@@ -136,7 +136,7 @@ func (s *HowToPlay) Update() error {
 		}
 
 		if s.myTurn && s.hoverCol >= 0 {
-			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) ||
+			if (inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) && !s.backBtn.IsHovered()) ||
 				inpututil.IsKeyJustPressed(ebiten.KeyEnter) ||
 				inpututil.IsKeyJustPressed(ebiten.KeyDown) ||
 				inpututil.IsKeyJustPressed(ebiten.KeyS) {
